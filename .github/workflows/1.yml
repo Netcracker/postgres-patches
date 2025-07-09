@@ -12,7 +12,7 @@ on:
         required: true
         options: ['17','16','15']
       tag:
-        description: Tag for upstream postgres/postgres repo
+        description: Tag for upstream git/postgres repo
         default: 'REL_17_9'
         type: string
         required: true
