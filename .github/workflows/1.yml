@@ -132,7 +132,7 @@ jobs:
       - name: Upload Debian packages
         uses: netcracker/qubership-workflow-hub/actions/assets-action@main
         with:
-          tag: ${{ inputs.tag }}
+          tag: ${{ inputs.release-tag }}
           item-path: ${{ env.distribution_root }}/*.deb
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
