@@ -1,40 +1,65 @@
 name: Build Deb packages
+
+permissions:
+  contents: write
+  workflows: write
+
 on:
   workflow_dispatch:
     inputs:
       pg-version:
-        description: Target PostgreSQL version
+        description: PostgreSQL version (branch в salsa.debian.org)
         type: choice
         required: true
-        options: ["17", "16", "15"]
+        options: ['17','16','15']
       tag:
-        description: Tag name to checkout from upstream postgres/postgres and to name the release
+        description: Тег для upstream postgres/postgres и для релиза
         type: string
         required: true
       patch-source-dir:
-        description: Путь к папке с патчами внутри этого репозитория
+        description: Путь к папке с патчами внутри этого репо
         type: string
-        default: "postgres-patches/patches-17"
-
-permissions:
-  contents: write
+        default: 'postgres-patches/patches-17'
+      archive-ext:
+        description: Расширение архива исходников (zip или tar.gz)
+        type: choice
+        required: true
+        options: ['tar.gz','zip']
+        default: 'tar.gz'
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout this repo
+      - name: Checkout this repo (с патчами)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Download PostgreSQL sources from tag
+      - name: Download source archive for tag `${{ inputs.tag }}`
         run: |
-          echo "::group::Download PostgreSQL ${{ inputs.tag }} sources"
-          mkdir -p upstream
-          curl -sSL \
-            "https://github.com/postgres/postgres/archive/refs/tags/${{ inputs.tag }}.tar.gz" \
-            | tar xz --strip-components=1 -C upstream
+          EXT=${{ inputs.archive-ext }}
+          TAG=${{ inputs.tag }}
+          echo "::group::Download PostgreSQL sources for tag $TAG"
+          URL="https://github.com/postgres/postgres/archive/${TAG}.${EXT}"
+          echo "Downloading $URL → postgres-${TAG}.${EXT}"
+          wget --progress=dot:giga "$URL" -O postgres-${TAG}.${EXT}
+          echo "::endgroup::"
+
+      - name: Extract sources
+        run: |
+          TAG=${{ inputs.tag }}
+          EXT=${{ inputs.archive-ext }}
+          echo "::group::Extract PostgreSQL sources"
+          if [ "$EXT" = "zip" ]; then
+            unzip -q postgres-${TAG}.zip
+          else
+            tar -xzf postgres-${TAG}.tar.gz
+          fi
+          # GitHub всегда создаёт папку postgres-<TAG>
+          mv postgres-${TAG} postgres-src
+          ls -1 postgres-src
           echo "::endgroup::"
 
       - name: Get Debian packaging
@@ -48,23 +73,20 @@ jobs:
       - name: Apply Debian packaging + local patches
         run: |
           echo "::group::Prepare source for build"
-          cp -R deb/postgresql/debian upstream/debian
-
-          cp -ur "${GITHUB_WORKSPACE}/${{ inputs.patch-source-dir }}"/* \
-            upstream/debian/patches/
-
+          cp -R deb/postgresql/debian postgres-src/debian
+          cp -ur "${GITHUB_WORKSPACE}/${{ inputs.patch-source-dir }}/"* \
+            postgres-src/debian/patches/
           cat "${GITHUB_WORKSPACE}/${{ inputs.patch-source-dir }}/series" \
-            >> upstream/debian/patches/series
-
+            >> postgres-src/debian/patches/series
           echo "::endgroup::"
           echo "::group::Final series file::"
-          cat upstream/debian/patches/series
+          cat postgres-src/debian/patches/series
           echo "::endgroup::"
 
       - name: Verify patches with quilt
         run: |
           echo "::group::Verify patches with quilt"
-          cd upstream
+          cd postgres-src
           sudo apt-get update && sudo apt-get install -y quilt
           export QUILT_PATCHES=debian/patches
           quilt push -a
@@ -84,7 +106,7 @@ jobs:
             python3-dev systemtap-sdt-dev tcl-dev uuid-dev xsltproc libz-dev
 
       - name: Build PostgreSQL deb packages
-        working-directory: upstream
+        working-directory: postgres-src
         run: |
           echo "::group::Build deb packages"
           dpkg-buildpackage -rfakeroot -b -uc -us
