@@ -12,21 +12,21 @@ on:
         required: true
         options: ['17','16','15']
       tag:
-        description: Tag for upstream git/postgres repo
-        default: 'REL_17_9'
+        description: Tag for upstream postgres/postgres repo
+        default: 'REL_17_5'
         type: string
         required: true
       release-tag:
-        description: Release tag for this repo (e.g. 17.9-1)
+        description: Release tag for this repo (e.g. 17.5-1)
         type: string
         required: true
         default: ''
       patch-source-dir:
-        description: Путь к папке с патчами внутри этого репо
+        description: Path to directory with local patches
         type: string
         default: 'postgres-patches/patches-17'
       archive-ext:
-        description: Расширение архива исходников (zip или tar.gz)
+        description: Archive extension for PostgreSQL sources (zip или tar.gz)
         type: choice
         required: true
         options: ['tar.gz','zip']
@@ -121,7 +121,7 @@ jobs:
         uses: netcracker/qubership-workflow-hub/actions/tag-action@main
         with:
           ref: ${{ github.ref_name }}
-          tag-name: ${{ inputs.release-tag }}
+          tag-name: ${{ inputs.re }}
           switch-to-tag: true
           create-release: true
           skip-checkout: true
