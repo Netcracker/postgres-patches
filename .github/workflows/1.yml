@@ -15,6 +15,7 @@ on:
         description: Путь к папке с патчами внутри этого репозитория
         type: string
         default: "postgres-patches/patches-17"
+
 permissions:
   contents: write
 
