@@ -6,7 +6,7 @@ on:
         description: Target PostgreSQL version
         type: choice
         required: true
-        options: ['17','16','15']
+        options: ["17", "16", "15"]
       tag:
         description: Tag name to checkout from upstream postgres/postgres and to name the release
         type: string
@@ -14,19 +14,17 @@ on:
       patch-source-dir:
         description: Путь к папке с патчами внутри этого репозитория
         type: string
-        default: 'postgres-patches/patches-17'
+        default: "postgres-patches/patches-17"
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # 0) Чекаутим этот репозиторий (с патчами)
       - name: Checkout this repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # 1) Скачиваем исходники по тегу из upstream и распаковываем
       - name: Download PostgreSQL sources from tag
         run: |
           echo "::group::Download PostgreSQL ${{ inputs.tag }} sources"
@@ -36,7 +34,6 @@ jobs:
             | tar xz --strip-components=1 -C upstream
           echo "::endgroup::"
 
-      # 2) Клонируем Debian-пакетинг
       - name: Get Debian packaging
         run: |
           echo "::group::Get Debian packaging"
@@ -45,28 +42,22 @@ jobs:
           git checkout ${{ inputs.pg-version }}
           echo "::endgroup::"
 
-      # 3) Копируем debian/ и ваши локальные патчи
       - name: Apply Debian packaging + local patches
         run: |
           echo "::group::Prepare source for build"
-          # 3.1 копируем debian/ в upstream
           cp -R deb/postgresql/debian upstream/debian
 
-          # 3.2 налётываем ваши патчи (только новые/обновлённые файлы)
           cp -ur "${GITHUB_WORKSPACE}/${{ inputs.patch-source-dir }}"/* \
             upstream/debian/patches/
 
-          # 3.3 объединяем файлы series
           cat "${GITHUB_WORKSPACE}/${{ inputs.patch-source-dir }}/series" \
             >> upstream/debian/patches/series
 
-          # 3.4 на всякий случай покажем итоговый series
           echo "::endgroup::"
           echo "::group::Final series file::"
           cat upstream/debian/patches/series
           echo "::endgroup::"
 
-      # 4) Устанавливаем зависимости
       - name: Install build prerequisites
         run: |
           sudo apt-get update
@@ -78,7 +69,6 @@ jobs:
             libxml2-dev libxml2-utils libxslt1-dev pkg-config clang llvm-dev \
             python3-dev systemtap-sdt-dev tcl-dev uuid-dev xsltproc libz-dev
 
-      # 5) Собираем .deb
       - name: Build PostgreSQL deb packages
         working-directory: upstream
         run: |
@@ -87,7 +77,6 @@ jobs:
           echo "::endgroup::"
           echo "distribution_root=$(realpath ..)" >> $GITHUB_ENV
 
-      # 6) Создаём тег/релиз и подтягиваем артефакты
       - name: Create Release
         uses: netcracker/qubership-workflow-hub/actions/tag-action@main
         with:
