@@ -12,9 +12,15 @@ on:
         required: true
         options: ['17','16','15']
       tag:
-        description: Тег для upstream postgres/postgres и для релиза
+        description: Tag for upstream postgres/postgres repo
+        default: 'REL_17_9'
         type: string
         required: true
+      release-tag:
+        description: Release tag for this repo (e.g. 17.9-1)
+        type: string
+        required: true
+        default: ''
       patch-source-dir:
         description: Путь к папке с патчами внутри этого репо
         type: string
@@ -31,7 +37,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout this repo (с патчами)
+      - name: Checkout this repo (with patches)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -56,7 +62,6 @@ jobs:
           else
             tar -xzf postgres-${TAG}.tar.gz
           fi
-          # GitHub всегда создаёт папку postgres-<TAG>
           mv postgres-${TAG} postgres-src
           ls -1 postgres-src
           echo "::endgroup::"
@@ -116,9 +121,9 @@ jobs:
         uses: netcracker/qubership-workflow-hub/actions/tag-action@main
         with:
           ref: ${{ github.ref_name }}
-          tag-name: ${{ inputs.tag }}
+          tag-name: ${{ inputs.release-tag }}
           switch-to-tag: true
-          create-release: true
+          create-release: false
           skip-checkout: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
