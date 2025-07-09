@@ -35,20 +35,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # 1) Download the exact "Source code (tar.gz)" asset from the GitHub Release
-      - name: Download PostgreSQL source from release assets
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download PostgreSQL source from tag
         run: |
-          echo "::group::Download PostgreSQL ${{ inputs.tag }} source archive"
+          echo "::group::Download PostgreSQL ${{ inputs.tag }} sources from tag"
           mkdir -p upstream
-          # скачиваем .tar.gz из релиза по тегу (тег задаём как первый аргумент)
-          gh release download \
-          "${{ inputs.tag }}" \
-          --repo postgres/postgres \
-          --pattern '*.tar.gz' \
-          --dir upstream
-          # распаковываем прямо в upstream/, убирая лишний уровень папок
-          tar xzf upstream/*.tar.gz -C upstream --strip-components=1
+          # стягиваем автогенерируемый .tar.gz по тегу
+          curl -sSL "https://github.com/postgres/postgres/archive/refs/tags/${{ inputs.tag }}.tar.gz" \
+          | tar xz --strip-components=1 -C upstream
           ls -1 upstream
           echo "::endgroup::"
 
