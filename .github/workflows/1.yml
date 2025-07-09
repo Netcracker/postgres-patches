@@ -40,13 +40,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "::group::Download PostgreSQL ${{ inputs.tag }} source archive"
-          mkdir upstream
-          # скачиваем единственный .tar.gz из релиза по тегу
+          mkdir -p upstream
+          # скачиваем .tar.gz из релиза по тегу (тег задаём как первый аргумент)
           gh release download \
-            --repo postgres/postgres \
-            --tag "${{ inputs.tag }}" \
-            --pattern '*.tar.gz' \
-            --dir upstream
+          "${{ inputs.tag }}" \
+          --repo postgres/postgres \
+          --pattern '*.tar.gz' \
+          --dir upstream
           # распаковываем прямо в upstream/, убирая лишний уровень папок
           tar xzf upstream/*.tar.gz -C upstream --strip-components=1
           ls -1 upstream
