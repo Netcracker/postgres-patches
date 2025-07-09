@@ -2,7 +2,6 @@ name: Build Deb packages
 
 permissions:
   contents: write
-  workflows: write
 
 on:
   workflow_dispatch:
