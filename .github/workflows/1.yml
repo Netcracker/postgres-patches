@@ -1,0 +1,126 @@
+name: Build Deb packages
+run-name: "PostgreSQL: ${{ inputs.pg-version }}. Tag: ${{ inputs.tag }}. Branch: ${{ github.ref_name }}"
+on:
+  workflow_dispatch:
+    inputs:
+      pg-version:
+        description: Target PostgreSQL version
+        type: choice
+        required: true
+        options:
+          - "17"
+          - "16"
+          - "15"
+      tag:
+        description: |
+          Tag name to checkout from upstream postgres/postgres
+          и одновременно — для релиза Debian-пакетов
+        type: string
+        required: true
+      patch-source-repo:
+        description: Repository with patches to be applied to PostgreSQL source code
+        type: string
+        default: "https://github.com/Netcracker/postgres-patches.git"
+      patch-source-branch:
+        description: Branch with patches to be applied to PostgreSQL source code
+        type: string
+        default: "main"
+      patch-source-dir:
+        description: Directory with patches to be applied to PostgreSQL source code
+        type: string
+        default: "postgres-patches/patches-17"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # 1) Download the exact "Source code (tar.gz)" asset from the GitHub Release
+      - name: Download PostgreSQL source from release assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "::group::Download PostgreSQL ${{ inputs.tag }} source archive"
+          mkdir upstream
+          # скачиваем единственный .tar.gz из релиза по тегу
+          gh release download \
+            --repo postgres/postgres \
+            --tag "${{ inputs.tag }}" \
+            --pattern '*.tar.gz' \
+            --dir upstream
+          # распаковываем прямо в upstream/, убирая лишний уровень папок
+          tar xzf upstream/*.tar.gz -C upstream --strip-components=1
+          ls -1 upstream
+          echo "::endgroup::"
+
+      # 2) Клонируем Debian-скрипты
+      - name: Get Debian packaging
+        run: |
+          echo "::group::Get Debian packaging"
+          mkdir -p deb
+          git clone https://salsa.debian.org/postgresql/postgresql.git deb/postgresql
+          cd deb/postgresql
+          git checkout ${{ inputs.pg-version }}
+          echo "::endgroup::"
+
+      # 3) Клонируем ваши патчи
+      - name: Get PostgreSQL patches
+        run: |
+          echo "::group::Get patches"
+          git clone ${{ inputs.patch-source-repo }} pg-patches
+          cd pg-patches
+          git checkout ${{ inputs.patch-source-branch }}
+          echo "::endgroup::"
+
+      # 4) Копируем debian/ и патчи в распакованные исходники
+      - name: Apply Debian packaging + patches
+        run: |
+          echo "::group::Prepare source for build"
+          cp -R deb/postgresql/debian upstream/
+          cp --update none -r pg-patches/${{ inputs.patch-source-dir }}/* \
+            upstream/debian/patches/
+          cat pg-patches/${{ inputs.patch-source-dir }}/series \
+            >> upstream/debian/patches/series
+          echo "::endgroup::"
+          echo "::group::Final series file::"
+          cat upstream/debian/patches/series
+          echo "::endgroup::"
+
+      # 5) Устанавливаем зависимости, строим .deb и заливаем их в релиз
+      - name: Install build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --fix-missing \
+            flex bison libicu-dev libperl-dev tcl krb5-multidev \
+            debhelper-compat dh-exec docbook-xsl gdb gettext dpkg-dev \
+            libio-pty-perl libipc-run-perl libkrb5-dev libldap2-dev libpam-dev \
+            libreadline-dev libselinux1-dev libssl-dev libsystemd-dev build-essential \
+            libxml2-dev libxml2-utils libxslt1-dev pkg-config clang llvm-dev \
+            python3-dev systemtap-sdt-dev tcl-dev uuid-dev xsltproc libz-dev
+
+      - name: Build PostgreSQL deb packages
+        working-directory: upstream
+        run: |
+          echo "::group::Build deb packages"
+          dpkg-buildpackage -rfakeroot -b -uc -us
+          echo "::endgroup::"
+          echo "distribution_root=$(realpath ..)" >> $GITHUB_ENV
+
+      - name: Create a New Tag/Release
+        uses: netcracker/qubership-workflow-hub/actions/tag-action@main
+        with:
+          ref: ${{ github.ref_name }}
+          tag-name: ${{ inputs.tag }}
+          force-create: ${{ inputs.forceCreate }}
+          switch-to-tag: true
+          create-release: true
+          skip-checkout: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Debian packages
+        uses: netcracker/qubership-workflow-hub/actions/assets-action@main
+        with:
+          tag: ${{ inputs.tag }}
+          item-path: ${{ env.distribution_root }}/*.deb
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
