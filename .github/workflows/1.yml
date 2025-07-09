@@ -17,7 +17,7 @@ on:
         type: string
         required: true
       release-tag:
-        description: Release tag for this repo (e.g. 17.5-1)
+        description: Release tag for this repo (e.g. 17.-1)
         type: string
         required: true
         default: ''
@@ -42,86 +42,86 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download source archive for tag `${{ inputs.tag }}`
-        run: |
-          EXT=${{ inputs.archive-ext }}
-          TAG=${{ inputs.tag }}
-          echo "::group::Download PostgreSQL sources for tag $TAG"
-          URL="https://github.com/postgres/postgres/archive/${TAG}.${EXT}"
-          echo "Downloading $URL → postgres-${TAG}.${EXT}"
-          wget --progress=dot:giga "$URL" -O postgres-${TAG}.${EXT}
-          echo "::endgroup::"
+    #   - name: Download source archive for tag `${{ inputs.tag }}`
+    #     run: |
+    #       EXT=${{ inputs.archive-ext }}
+    #       TAG=${{ inputs.tag }}
+    #       echo "::group::Download PostgreSQL sources for tag $TAG"
+    #       URL="https://github.com/postgres/postgres/archive/${TAG}.${EXT}"
+    #       echo "Downloading $URL → postgres-${TAG}.${EXT}"
+    #       wget --progress=dot:giga "$URL" -O postgres-${TAG}.${EXT}
+    #       echo "::endgroup::"
 
-      - name: Extract sources
-        run: |
-          TAG=${{ inputs.tag }}
-          EXT=${{ inputs.archive-ext }}
-          echo "::group::Extract PostgreSQL sources"
-          if [ "$EXT" = "zip" ]; then
-            unzip -q postgres-${TAG}.zip
-          else
-            tar -xzf postgres-${TAG}.tar.gz
-          fi
-          mv postgres-${TAG} postgres-src
-          ls -1 postgres-src
-          echo "::endgroup::"
+    #   - name: Extract sources
+    #     run: |
+    #       TAG=${{ inputs.tag }}
+    #       EXT=${{ inputs.archive-ext }}
+    #       echo "::group::Extract PostgreSQL sources"
+    #       if [ "$EXT" = "zip" ]; then
+    #         unzip -q postgres-${TAG}.zip
+    #       else
+    #         tar -xzf postgres-${TAG}.tar.gz
+    #       fi
+    #       mv postgres-${TAG} postgres-src
+    #       ls -1 postgres-src
+    #       echo "::endgroup::"
 
-      - name: Get Debian packaging
-        run: |
-          echo "::group::Get Debian packaging"
-          git clone https://salsa.debian.org/postgresql/postgresql.git deb/postgresql
-          cd deb/postgresql
-          git checkout ${{ inputs.pg-version }}
-          echo "::endgroup::"
+    #   - name: Get Debian packaging
+    #     run: |
+    #       echo "::group::Get Debian packaging"
+    #       git clone https://salsa.debian.org/postgresql/postgresql.git deb/postgresql
+    #       cd deb/postgresql
+    #       git checkout ${{ inputs.pg-version }}
+    #       echo "::endgroup::"
 
-      - name: Apply Debian packaging + local patches
-        run: |
-          echo "::group::Prepare source for build"
-          cp -R deb/postgresql/debian postgres-src/debian
-          cp -ur "${GITHUB_WORKSPACE}/${{ inputs.patch-source-dir }}/"* \
-            postgres-src/debian/patches/
-          cat "${GITHUB_WORKSPACE}/${{ inputs.patch-source-dir }}/series" \
-            >> postgres-src/debian/patches/series
-          echo "::endgroup::"
-          echo "::group::Final series file::"
-          cat postgres-src/debian/patches/series
-          echo "::endgroup::"
+    #   - name: Apply Debian packaging + local patches
+    #     run: |
+    #       echo "::group::Prepare source for build"
+    #       cp -R deb/postgresql/debian postgres-src/debian
+    #       cp -ur "${GITHUB_WORKSPACE}/${{ inputs.patch-source-dir }}/"* \
+    #         postgres-src/debian/patches/
+    #       cat "${GITHUB_WORKSPACE}/${{ inputs.patch-source-dir }}/series" \
+    #         >> postgres-src/debian/patches/series
+    #       echo "::endgroup::"
+    #       echo "::group::Final series file::"
+    #       cat postgres-src/debian/patches/series
+    #       echo "::endgroup::"
 
-      - name: Verify patches with quilt
-        run: |
-          echo "::group::Verify patches with quilt"
-          cd postgres-src
-          sudo apt-get update && sudo apt-get install -y quilt
-          export QUILT_PATCHES=debian/patches
-          quilt push -a
-          echo "Applied patches:"
-          quilt applied
-          echo "::endgroup::"
+    #   - name: Verify patches with quilt
+    #     run: |
+    #       echo "::group::Verify patches with quilt"
+    #       cd postgres-src
+    #       sudo apt-get update && sudo apt-get install -y quilt
+    #       export QUILT_PATCHES=debian/patches
+    #       quilt push -a
+    #       echo "Applied patches:"
+    #       quilt applied
+    #       echo "::endgroup::"
 
-      - name: Install build prerequisites
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --fix-missing \
-            flex bison libicu-dev libperl-dev tcl krb5-multidev \
-            debhelper-compat dh-exec docbook-xsl gdb gettext dpkg-dev \
-            libio-pty-perl libipc-run-perl libkrb5-dev libldap2-dev libpam-dev \
-            libreadline-dev libselinux1-dev libssl-dev libsystemd-dev build-essential \
-            libxml2-dev libxml2-utils libxslt1-dev pkg-config clang llvm-dev \
-            python3-dev systemtap-sdt-dev tcl-dev uuid-dev xsltproc libz-dev
+    #   - name: Install build prerequisites
+    #     run: |
+    #       sudo apt-get update
+    #       sudo apt-get install -y --fix-missing \
+    #         flex bison libicu-dev libperl-dev tcl krb5-multidev \
+    #         debhelper-compat dh-exec docbook-xsl gdb gettext dpkg-dev \
+    #         libio-pty-perl libipc-run-perl libkrb5-dev libldap2-dev libpam-dev \
+    #         libreadline-dev libselinux1-dev libssl-dev libsystemd-dev build-essential \
+    #         libxml2-dev libxml2-utils libxslt1-dev pkg-config clang llvm-dev \
+    #         python3-dev systemtap-sdt-dev tcl-dev uuid-dev xsltproc libz-dev
 
-      - name: Build PostgreSQL deb packages
-        working-directory: postgres-src
-        run: |
-          echo "::group::Build deb packages"
-          dpkg-buildpackage -rfakeroot -b -uc -us
-          echo "::endgroup::"
-          echo "distribution_root=$(realpath ..)" >> $GITHUB_ENV
+    #   - name: Build PostgreSQL deb packages
+    #     working-directory: postgres-src
+    #     run: |
+    #       echo "::group::Build deb packages"
+    #       dpkg-buildpackage -rfakeroot -b -uc -us
+    #       echo "::endgroup::"
+    #       echo "distribution_root=$(realpath ..)" >> $GITHUB_ENV
 
       - name: Create Release
         uses: netcracker/qubership-workflow-hub/actions/tag-action@main
         with:
           ref: ${{ github.ref_name }}
-          tag-name: ${{ inputs.re }}
+          tag-name: ${{ inputs.release-tag }}
           switch-to-tag: true
           create-release: true
           skip-checkout: true
