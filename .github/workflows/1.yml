@@ -1,5 +1,5 @@
 name: Build Deb packages
-
+run-name: Build Deb — PG ${{ github.event.inputs.pg-version }} — UpTag ${{ github.event.inputs.tag }} — RelTag ${{ github.event.inputs.release-tag }}
 permissions:
   contents: write
 
