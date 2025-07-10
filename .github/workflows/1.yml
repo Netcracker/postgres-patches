@@ -10,28 +10,27 @@ on:
         description: PostgreSQL version (branch в salsa.debian.org)
         type: choice
         required: true
-        options: ['17','16','15']
+        options: ["17", "16", "15"]
       tag:
         description: Tag for upstream postgres/postgres repo
-        default: 'REL_17_5'
+        default: "REL_17_5"
         type: string
         required: true
       release-tag:
         description: Release tag for this repo (e.g. 17.-1)
         type: string
         required: true
-        default: ''
+        default: "17.5-1"
       patch-source-dir:
         description: Path to directory with local patches
         type: string
-        default: 'postgres-patches/patches-17'
+        default: "postgres-patches/patches-17"
       archive-ext:
         description: Archive extension for PostgreSQL sources (zip или tar.gz)
         type: choice
         required: true
-        options: ['tar.gz','zip']
-        default: 'tar.gz'
-
+        options: ["tar.gz", "zip"]
+        default: "tar.gz"
 jobs:
   build:
     runs-on: ubuntu-latest
