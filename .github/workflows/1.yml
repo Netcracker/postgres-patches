@@ -31,6 +31,11 @@ on:
         required: true
         options: ["tar.gz", "zip"]
         default: "tar.gz"
+      draft-release:
+        description: Create draft release
+        type: boolean
+        default: false
+        required: false
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -125,6 +130,7 @@ jobs:
           switch-to-tag: true
           create-release: true
           skip-checkout: true
+          draft-release: ${{ inputs.draft-release }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
