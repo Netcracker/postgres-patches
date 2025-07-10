@@ -1,5 +1,5 @@
 name: PostgreSQL Debian Build
-run-name: Build Deb package — PG ${{ github.event.inputs.pg-version }} — UpTag ${{ github.event.inputs.tag }} — RelTag ${{ github.event.inputs.release-tag }}
+run-name: 'Build Deb package -> PG: ${{ github.event.inputs.pg-version }}, Upstream Tag: ${{ github.event.inputs.tag }}, Release Tag: ${{ github.event.inputs.release-tag }}'
 permissions:
   contents: write
 
