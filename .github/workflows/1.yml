@@ -6,21 +6,26 @@ permissions:
 on:
   workflow_dispatch:
     inputs:
+#      pg-version:
+#        description: PostgreSQL version (branch в salsa.debian.org)
+#        type: choice
+#        required: true
+#        options: ["17", "16", "15"]
       pg-version:
         description: PostgreSQL version (branch в salsa.debian.org)
-        type: choice
+        type: string
         required: true
-        options: ["17", "16", "15"]
+        default: debian/17.6-2
       tag:
         description: Tag for upstream postgres/postgres repo
-        default: "REL_17_5"
+        default: "REL_17_6"
         type: string
         required: true
       release-tag:
         description: Release tag for this repo (e.g. 17.-1)
         type: string
         required: true
-        default: "17.5-1"
+        default: "17.6-2"
       patch-source-dir:
         description: Path to directory with local patches
         type: string
