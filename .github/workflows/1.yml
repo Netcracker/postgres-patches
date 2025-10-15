@@ -109,6 +109,8 @@ jobs:
 
       - name: Install build prerequisites
         run: |
+          sudo echo "deb [trusted=yes] http://apt.postgresql.org/pub/repos/apt jammy-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
+          ls -la /etc/apt/
           sudo apt-get update
           sudo apt-get install -y --fix-missing \
             flex bison libicu-dev libperl-dev tcl krb5-multidev \
