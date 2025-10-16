@@ -120,7 +120,8 @@ jobs:
             libio-pty-perl libipc-run-perl libkrb5-dev libldap2-dev libpam-dev \
             libreadline-dev libselinux1-dev libssl-dev libsystemd-dev build-essential \
             libxml2-dev libxml2-utils libxslt1-dev pkg-config clang llvm-dev \
-            python3-dev systemtap-sdt-dev tcl-dev uuid-dev xsltproc libz-dev postgresql-common-dev
+            python3-dev systemtap-sdt-dev tcl-dev uuid-dev xsltproc libz-dev postgresql-common-dev \
+            pkgconf tzdata-legacy
 
       - name: Build PostgreSQL deb packages
         working-directory: postgres-src
