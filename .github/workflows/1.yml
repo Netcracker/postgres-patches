@@ -121,7 +121,7 @@ jobs:
             libreadline-dev libselinux1-dev libssl-dev libsystemd-dev build-essential \
             libxml2-dev libxml2-utils libxslt1-dev pkg-config clang llvm-dev \
             python3-dev systemtap-sdt-dev tcl-dev uuid-dev xsltproc libz-dev postgresql-common-dev \
-            pkgconf tzdata
+            tzdata
 
       - name: Build PostgreSQL deb packages
         working-directory: postgres-src
