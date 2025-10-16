@@ -120,8 +120,10 @@ jobs:
             libio-pty-perl libipc-run-perl libkrb5-dev libldap2-dev libpam-dev \
             libreadline-dev libselinux1-dev libssl-dev libsystemd-dev build-essential \
             libxml2-dev libxml2-utils libxslt1-dev pkg-config clang llvm-dev \
-            python3-dev systemtap-sdt-dev tcl-dev uuid-dev xsltproc libz-dev postgresql-common-dev \
-            tzdata=2023c-8 pkgconf
+            python3-dev systemtap-sdt-dev tcl-dev uuid-dev xsltproc libz-dev postgresql-common-dev
+            wget https://launchpad.net/ubuntu/+archive/primary/+files/tzdata_2023c-0ubuntu0.18.04_all.deb
+            sudo apt-get install -y --allow-downgrades ./tzdata_2023c-0ubuntu0.18.04_all.deb
+            # pkgconf
 
       - name: Build PostgreSQL deb packages
         working-directory: postgres-src
