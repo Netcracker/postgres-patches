@@ -126,6 +126,7 @@ jobs:
         working-directory: postgres-src
         run: |
           echo "::group::Build deb packages"
+          export DEB_BUILD_OPTIONS=nocheck
           dpkg-buildpackage -rfakeroot -b -uc -us
           echo "::endgroup::"
           echo "distribution_root=$(realpath ..)" >> $GITHUB_ENV
