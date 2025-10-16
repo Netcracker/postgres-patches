@@ -123,7 +123,7 @@ jobs:
             python3-dev systemtap-sdt-dev tcl-dev uuid-dev xsltproc libz-dev postgresql-common-dev
             wget https://launchpad.net/ubuntu/+archive/primary/+files/tzdata_2023c-0ubuntu0.18.04_all.deb
             sudo apt-get install -y --allow-downgrades ./tzdata_2023c-0ubuntu0.18.04_all.deb
-            # pkgconf
+            sudo apt-get install -y --allow-downgrades pkgconf
 
       - name: Build PostgreSQL deb packages
         working-directory: postgres-src
