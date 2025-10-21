@@ -51,7 +51,7 @@ jobs:
           - ubuntu-22.04-arm
     runs-on: ${{ matrix.platform }}
     env:
-      RELEASE_TAG: ${{ github.event.inputs.release-tag }}-${{ matrix.platform == 'ubuntu-22.04-arm' && 'arm64' || 'amd64' }}
+      RELEASE_TAG: ${{ github.event.inputs.release-tag }}
     steps:
       - name: Checkout this repo (with patches)
         uses: actions/checkout@v5
