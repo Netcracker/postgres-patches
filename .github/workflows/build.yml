@@ -41,6 +41,7 @@ on:
         required: false
 jobs:
   build:
+    name: Build for ${{ matrix.platform }}
     permissions:
       contents: write
       actions: write
@@ -145,7 +146,8 @@ jobs:
       - name: Create Draft Release
         uses: Netcracker/release-drafter@v1.0.0
         with:
-          publish: true
+          config-name: release-drafter-config.yaml
+          publish: ${{ ! inputs.draft-release }}
           name: ${{ env.RELEASE_TAG }}
           tag: ${{ env.RELEASE_TAG }}
           version: ${{ env.RELEASE_TAG }}
