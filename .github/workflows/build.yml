@@ -142,16 +142,13 @@ jobs:
           echo "::endgroup::"
           echo "distribution_root=$(realpath ..)" >> $GITHUB_ENV
 
-      - name: Create Release
-        uses: netcracker/qubership-workflow-hub/actions/tag-action@main
+      - name: Create Draft Release
+        uses: Netcracker/release-drafter@v1.0.0
         with:
-          ref: ${{ github.ref_name }}
-          tag-name: ${{ env.RELEASE_TAG }}
-          force-create: true
-          switch-to-tag: true
-          create-release: true
-          skip-checkout: true
-          draft-release: ${{ inputs.draft-release }}
+          publish: true
+          name: ${{ env.RELEASE_TAG }}
+          tag: ${{ env.RELEASE_TAG }}
+          version: ${{ env.RELEASE_TAG }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
