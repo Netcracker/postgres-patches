@@ -125,20 +125,20 @@ jobs:
             wget https://launchpad.net/ubuntu/+archive/primary/+files/tzdata_2023c-0ubuntu0.18.04_all.deb
             sudo apt-get install -y --allow-downgrades ./tzdata_2023c-0ubuntu0.18.04_all.deb
             sudo apt-get install -y --allow-downgrades pkgconf
-            sudo apt install dpkg-dev build-essential crossbuild-essential-arm64
+            # sudo apt install dpkg-dev build-essential crossbuild-essential-arm64
 
       - name: Build PostgreSQL deb packages
         working-directory: postgres-src
         run: |
           echo "::group::Build deb packages"
           export DEB_BUILD_OPTIONS=nocheck
-          export CC=aarch64-linux-gnu-gcc
-          export CXX=aarch64-linux-gnu-g++
-          export DEB_HOST_ARCH=arm64
-          sudo dpkg --add-architecture arm64
-          sudo apt-get update
-          sudo apt build-dep -a arm64 .
-          dpkg-buildpackage -aarm64 --host-arch arm64 -rfakeroot -b -uc -us
+          #export CC=aarch64-linux-gnu-gcc
+          #export CXX=aarch64-linux-gnu-g++
+          #export DEB_HOST_ARCH=arm64
+          #sudo dpkg --add-architecture arm64
+          #sudo apt-get update
+          #sudo apt build-dep -a arm64 .
+          dpkg-buildpackage -rfakeroot -b -uc -us
           echo "::endgroup::"
           echo "distribution_root=$(realpath ..)" >> $GITHUB_ENV
 
