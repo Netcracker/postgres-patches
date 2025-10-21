@@ -42,7 +42,7 @@ on:
         default: false
         required: false
 jobs:
-  build:
+  build-amd64:
     runs-on: ubuntu-22.04
 
     steps:
@@ -138,7 +138,7 @@ jobs:
         uses: netcracker/qubership-workflow-hub/actions/tag-action@main
         with:
           ref: ${{ github.ref_name }}
-          tag-name: ${{ inputs.release-tag }}
+          tag-name: ${{ inputs.release-tag }}-amd64
           force-create: true
           switch-to-tag: true
           create-release: true
