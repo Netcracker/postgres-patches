@@ -10,7 +10,7 @@ on:
 #        required: true
 #        options: ["17", "16", "15"]
       pg-version:
-        description: PostgreSQL version (branch в salsa.debian.org)
+        description: PostgreSQL version (tag in https://salsa.debian.org/postgresql/postgresql/)
         type: string
         required: true
         default: debian/17.6-2
@@ -20,7 +20,7 @@ on:
         type: string
         required: true
       release-tag:
-        description: Release tag for this repo (e.g. 17.-1)
+        description: Release tag for this repo (e.g. 17.6-1)
         type: string
         required: true
         default: "17.6-2"
@@ -34,10 +34,10 @@ on:
         required: true
         options: ["tar.gz", "zip"]
         default: "tar.gz"
-      draft-release:
-        description: Create draft release
+      trigger-pgskipper-patroni:
+        description: Trigger pgskipper-patroni build after successful package build
         type: boolean
-        default: false
+        default: true
         required: false
 jobs:
   build:
@@ -161,3 +161,20 @@ jobs:
           item-path: ${{ env.distribution_root }}/*.deb
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  trigger-pgskipper-patroni:
+    if: ${{ inputs.trigger-pgskipper-patroni }}
+    name: Trigger pgskipper-patroni build
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set PostgreSQL version
+        run: echo "pg_version=$(echo ${{ inputs.pg-version }} | cut -d'.' -f1 | cut -d'/' -f2)" >> $GITHUB_ENV
+      - name: Trigger workflow
+        uses: netcracker/qubership-workflow-hub/actions/custom-event@v2.0.1
+        with:
+          github-token: ${{ secrets.GH_ACCESS_TOKEN }}
+          owner: ${{ github.repository_owner }}
+          repo: pgskipper-patroni
+          event-type: pg-patched-build
+          client-payload: '{"custom_postgres_version": "${{ inputs.release-tag }}", "postgres_version": "${{ env.pg_version }}"}'
