@@ -2,6 +2,7 @@ name: PostgreSQL Debian Build ARM64
 run-name: 'Build Deb package -> PG: ${{ github.event.inputs.pg-version }}, Upstream Tag: ${{ github.event.inputs.tag }}, Release Tag: ${{ github.event.inputs.release-tag }}'
 permissions:
   contents: write
+  actions: write
 
 on:
   workflow_dispatch:
