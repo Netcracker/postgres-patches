@@ -134,6 +134,8 @@ jobs:
           export CC=aarch64-linux-gnu-gcc
           export CXX=aarch64-linux-gnu-g++
           export DEB_HOST_ARCH=arm64
+          sudo dpkg --add-architecture arm64
+          sudo apt-get update
           sudo apt build-dep -a arm64 .
           dpkg-buildpackage -aarm64 --host-arch arm64 -rfakeroot -b -uc -us
           echo "::endgroup::"
