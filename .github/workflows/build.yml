@@ -163,13 +163,16 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   trigger-pgskipper-patroni:
-    if: ${{ inputs.trigger-pgskipper-patroni }}
+    if: ${{ inputs.trigger-pgskipper-patroni && ! inputs.draft-release }}
     name: Trigger pgskipper-patroni build
     needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Set PostgreSQL version
-        run: echo "pg_version=$(echo ${{ inputs.pg-version }} | cut -d'.' -f1 | cut -d'/' -f2)" >> $GITHUB_ENV
+        run: |
+          echo "pg_version=$(echo ${{ inputs.pg-version }} | cut -d'.' -f1 | cut -d'/' -f2)" >> $GITHUB_ENV
+          echo "custom_postgres_version=$(echo ${{ inputs.pg-version }} | cut -d'/' -f2)" >> $GITHUB_ENV
+          echo "patched_release=${{ inputs.release-tag }}" >> $GITHUB_ENV
       - name: Trigger workflow
         uses: netcracker/qubership-workflow-hub/actions/custom-event@v2.0.1
         with:
@@ -177,4 +180,4 @@ jobs:
           owner: ${{ github.repository_owner }}
           repo: pgskipper-patroni
           event-type: pg-patched-build
-          client-payload: '{"custom_postgres_version": "${{ inputs.release-tag }}", "postgres_version": "${{ env.pg_version }}"}'
+          client-payload: '{"custom_postgres_version": "${{ env.custom_postgres_version }}", "postgres_version": "${{ env.pg_version }}", "patched_release": "${{ env.patched_release }}"}'
