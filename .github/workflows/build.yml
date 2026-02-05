@@ -182,6 +182,6 @@ jobs:
         with:
           github-token: ${{ secrets.GH_ACCESS_TOKEN }}
           owner: ${{ github.repository_owner }}
-          repo: pgskipper-patroni
+          repo: pgskipper-operator
           event-type: pg-patched-build
           client-payload: '{"custom_postgres_version": "${{ env.custom_postgres_version }}", "postgres_version": "${{ env.pg_version }}", "patched_release": "${{ env.patched_release }}"}'
