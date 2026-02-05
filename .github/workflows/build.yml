@@ -4,11 +4,6 @@ run-name: 'Build Deb package -> PG: ${{ github.event.inputs.pg-version }}, Upstr
 on:
   workflow_dispatch:
     inputs:
-#      pg-version:
-#        description: PostgreSQL version (branch в salsa.debian.org)
-#        type: choice
-#        required: true
-#        options: ["17", "16", "15"]
       pg-version:
         description: PostgreSQL version (tag in https://salsa.debian.org/postgresql/postgresql/)
         type: string
@@ -39,6 +34,16 @@ on:
         type: boolean
         default: true
         required: false
+  schedule:
+    - cron: '0 2 * * *'
+env:
+  PG_VERSION: ${{ inputs.pg-version || 'debian/17.6-2' }}
+  TAG: ${{ inputs.tag || 'REL_17_6' }}
+  RELEASE_TAG: ${{ inputs.release-tag || '17.6-2' }}
+  PATCH_SOURCE_DIR: ${{ inputs.patch-source-dir || 'postgres-patches/patches-17' }}
+  ARCHIVE_EXT: ${{ inputs.archive-ext || 'tar.gz' }}
+  TRIGGER_PGSKIPPER_PATRONI: ${{ inputs.trigger-pgskipper-patroni || 'true' }}
+
 jobs:
   build:
     name: Build for ${{ matrix.platform }}
@@ -51,18 +56,16 @@ jobs:
           - ubuntu-22.04
           - ubuntu-22.04-arm
     runs-on: ${{ matrix.platform }}
-    env:
-      RELEASE_TAG: ${{ github.event.inputs.release-tag }}
     steps:
       - name: Checkout this repo (with patches)
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
-      - name: Download source archive for tag `${{ inputs.tag }}`
+      - name: Download source archive for tag `${{ env.TAG }}`
         run: |
-          EXT=${{ inputs.archive-ext }}
-          TAG=${{ inputs.tag }}
+          EXT=${{ env.ARCHIVE_EXT }}
+          TAG=${{ env.TAG }}
           echo "::group::Download PostgreSQL sources for tag $TAG"
           URL="https://github.com/postgres/postgres/archive/${TAG}.${EXT}"
           echo "Downloading $URL → postgres-${TAG}.${EXT}"
@@ -71,8 +74,8 @@ jobs:
 
       - name: Extract sources
         run: |
-          TAG=${{ inputs.tag }}
-          EXT=${{ inputs.archive-ext }}
+          TAG=${{ env.TAG }}
+          EXT=${{ env.ARCHIVE_EXT }}
           echo "::group::Extract PostgreSQL sources"
           if [ "$EXT" = "zip" ]; then
             unzip -q postgres-${TAG}.zip
@@ -88,16 +91,16 @@ jobs:
           echo "::group::Get Debian packaging"
           git clone https://salsa.debian.org/postgresql/postgresql.git deb/postgresql
           cd deb/postgresql
-          git checkout ${{ inputs.pg-version }}
+          git checkout ${{ env.PG_VERSION }}
           echo "::endgroup::"
 
       - name: Apply Debian packaging + local patches
         run: |
           echo "::group::Prepare source for build"
           cp -R deb/postgresql/debian postgres-src/debian
-          cp -ur "${GITHUB_WORKSPACE}/${{ inputs.patch-source-dir }}/"* \
+          cp -ur "${GITHUB_WORKSPACE}/${{ env.PATCH_SOURCE_DIR }}/"* \
             postgres-src/debian/patches/
-          cat "${GITHUB_WORKSPACE}/${{ inputs.patch-source-dir }}/series" \
+          cat "${GITHUB_WORKSPACE}/${{ env.PATCH_SOURCE_DIR }}/series" \
             >> postgres-src/debian/patches/series
           echo "::endgroup::"
           echo "::group::Final series file::"
@@ -147,7 +150,7 @@ jobs:
         uses: Netcracker/release-drafter@v1.0.0
         with:
           config-name: release-drafter-config.yaml
-          publish: ${{ ! inputs.draft-release }}
+          publish: true
           name: ${{ env.RELEASE_TAG }}
           tag: ${{ env.RELEASE_TAG }}
           version: ${{ env.RELEASE_TAG }}
@@ -163,17 +166,18 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   trigger-pgskipper-patroni:
-    if: ${{ inputs.trigger-pgskipper-patroni && ! inputs.draft-release }}
     name: Trigger pgskipper-patroni build
     needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Set PostgreSQL version
+        if: ${{ env.TRIGGER_PGSKIPPER_PATRONI == 'true' }}
         run: |
-          echo "pg_version=$(echo ${{ inputs.pg-version }} | cut -d'.' -f1 | cut -d'/' -f2)" >> $GITHUB_ENV
-          echo "custom_postgres_version=$(echo ${{ inputs.pg-version }} | cut -d'/' -f2)" >> $GITHUB_ENV
-          echo "patched_release=${{ inputs.release-tag }}" >> $GITHUB_ENV
+          echo "pg_version=$(echo ${{ env.PG_VERSION }} | cut -d'.' -f1 | cut -d'/' -f2)" >> $GITHUB_ENV
+          echo "custom_postgres_version=$(echo ${{ env.PG_VERSION }} | cut -d'/' -f2)" >> $GITHUB_ENV
+          echo "patched_release=${{ env.RELEASE_TAG }}" >> $GITHUB_ENV
       - name: Trigger workflow
+        if: ${{ env.TRIGGER_PGSKIPPER_PATRONI == 'true' }}
         uses: netcracker/qubership-workflow-hub/actions/custom-event@v2.0.1
         with:
           github-token: ${{ secrets.GH_ACCESS_TOKEN }}
