@@ -1,26 +1,24 @@
-name: PostgreSQL Debian Build
+name: PostgreSQL Debian Build AMD/ARM64
 run-name: 'Build Deb package -> PG: ${{ github.event.inputs.pg-version }}, Upstream Tag: ${{ github.event.inputs.tag }}, Release Tag: ${{ github.event.inputs.release-tag }}'
-permissions:
-  contents: write
 
 on:
   workflow_dispatch:
     inputs:
       pg-version:
-        description: PostgreSQL version (branch в salsa.debian.org)
-        type: choice
+        description: PostgreSQL version (tag in https://salsa.debian.org/postgresql/postgresql/)
+        type: string
         required: true
-        options: ["17", "16", "15"]
+        default: debian/17.6-2
       tag:
         description: Tag for upstream postgres/postgres repo
-        default: "REL_17_5"
+        default: "REL_17_6"
         type: string
         required: true
       release-tag:
-        description: Release tag for this repo (e.g. 17.-1)
+        description: Release tag for this repo (e.g. 17.6-1)
         type: string
         required: true
-        default: "17.5-1"
+        default: "17.6-2"
       patch-source-dir:
         description: Path to directory with local patches
         type: string
@@ -31,25 +29,43 @@ on:
         required: true
         options: ["tar.gz", "zip"]
         default: "tar.gz"
-      draft-release:
-        description: Create draft release
+      trigger-pgskipper-patroni:
+        description: Trigger pgskipper-patroni build after successful package build
         type: boolean
-        default: false
+        default: true
         required: false
+  schedule:
+    - cron: '0 2 * * *'
+env:
+  PG_VERSION: ${{ inputs.pg-version || 'debian/17.6-2' }}
+  TAG: ${{ inputs.tag || 'REL_17_6' }}
+  RELEASE_TAG: ${{ inputs.release-tag || '17.6-2' }}
+  PATCH_SOURCE_DIR: ${{ inputs.patch-source-dir || 'postgres-patches/patches-17' }}
+  ARCHIVE_EXT: ${{ inputs.archive-ext || 'tar.gz' }}
+  TRIGGER_PGSKIPPER_PATRONI: ${{ inputs.trigger-pgskipper-patroni || 'true' }}
+
 jobs:
   build:
-    runs-on: ubuntu-latest
-
+    name: Build for ${{ matrix.platform }}
+    permissions:
+      contents: write
+      actions: write
+    strategy:
+      matrix:
+        platform:
+          - ubuntu-22.04
+          - ubuntu-22.04-arm
+    runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout this repo (with patches)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
-      - name: Download source archive for tag `${{ inputs.tag }}`
+      - name: Download source archive for tag `${{ env.TAG }}`
         run: |
-          EXT=${{ inputs.archive-ext }}
-          TAG=${{ inputs.tag }}
+          EXT=${{ env.ARCHIVE_EXT }}
+          TAG=${{ env.TAG }}
           echo "::group::Download PostgreSQL sources for tag $TAG"
           URL="https://github.com/postgres/postgres/archive/${TAG}.${EXT}"
           echo "Downloading $URL → postgres-${TAG}.${EXT}"
@@ -58,8 +74,8 @@ jobs:
 
       - name: Extract sources
         run: |
-          TAG=${{ inputs.tag }}
-          EXT=${{ inputs.archive-ext }}
+          TAG=${{ env.TAG }}
+          EXT=${{ env.ARCHIVE_EXT }}
           echo "::group::Extract PostgreSQL sources"
           if [ "$EXT" = "zip" ]; then
             unzip -q postgres-${TAG}.zip
@@ -75,16 +91,16 @@ jobs:
           echo "::group::Get Debian packaging"
           git clone https://salsa.debian.org/postgresql/postgresql.git deb/postgresql
           cd deb/postgresql
-          git checkout ${{ inputs.pg-version }}
+          git checkout ${{ env.PG_VERSION }}
           echo "::endgroup::"
 
       - name: Apply Debian packaging + local patches
         run: |
           echo "::group::Prepare source for build"
           cp -R deb/postgresql/debian postgres-src/debian
-          cp -ur "${GITHUB_WORKSPACE}/${{ inputs.patch-source-dir }}/"* \
+          cp -ur "${GITHUB_WORKSPACE}/${{ env.PATCH_SOURCE_DIR }}/"* \
             postgres-src/debian/patches/
-          cat "${GITHUB_WORKSPACE}/${{ inputs.patch-source-dir }}/series" \
+          cat "${GITHUB_WORKSPACE}/${{ env.PATCH_SOURCE_DIR }}/series" \
             >> postgres-src/debian/patches/series
           echo "::endgroup::"
           echo "::group::Final series file::"
@@ -104,40 +120,68 @@ jobs:
 
       - name: Install build prerequisites
         run: |
+          sudo chmod 777 /etc/apt/sources.list.d/
+          sudo echo "deb [trusted=yes] http://apt.postgresql.org/pub/repos/apt jammy-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
+          sudo chmod 544 /etc/apt/sources.list.d/
+          ls -la /etc/apt/
           sudo apt-get update
-          sudo apt-get install -y --fix-missing \
+          sudo apt-get install -y --fix-missing --allow-downgrades \
             flex bison libicu-dev libperl-dev tcl krb5-multidev \
             debhelper-compat dh-exec docbook-xsl gdb gettext dpkg-dev \
             libio-pty-perl libipc-run-perl libkrb5-dev libldap2-dev libpam-dev \
             libreadline-dev libselinux1-dev libssl-dev libsystemd-dev build-essential \
             libxml2-dev libxml2-utils libxslt1-dev pkg-config clang llvm-dev \
-            python3-dev systemtap-sdt-dev tcl-dev uuid-dev xsltproc libz-dev
+            python3-dev systemtap-sdt-dev tcl-dev uuid-dev xsltproc libz-dev postgresql-common-dev
+            wget https://launchpad.net/ubuntu/+archive/primary/+files/tzdata_2023c-0ubuntu0.18.04_all.deb
+            sudo apt-get install -y --allow-downgrades ./tzdata_2023c-0ubuntu0.18.04_all.deb
+            sudo apt-get install -y --allow-downgrades pkgconf
+            rm -f tzdata_2023c-0ubuntu0.18.04_all.deb
 
       - name: Build PostgreSQL deb packages
         working-directory: postgres-src
         run: |
           echo "::group::Build deb packages"
+          # export DEB_BUILD_OPTIONS=nocheck
           dpkg-buildpackage -rfakeroot -b -uc -us
           echo "::endgroup::"
           echo "distribution_root=$(realpath ..)" >> $GITHUB_ENV
 
-      - name: Create Release
-        uses: netcracker/qubership-workflow-hub/actions/tag-action@main
+      - name: Create Draft Release
+        uses: Netcracker/release-drafter@v1.0.0
         with:
-          ref: ${{ github.ref_name }}
-          tag-name: ${{ inputs.release-tag }}
-          force-create: true
-          switch-to-tag: true
-          create-release: true
-          skip-checkout: true
-          draft-release: ${{ inputs.draft-release }}
+          config-name: release-drafter-config.yaml
+          publish: true
+          name: ${{ env.RELEASE_TAG }}
+          tag: ${{ env.RELEASE_TAG }}
+          version: ${{ env.RELEASE_TAG }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload Debian packages
         uses: netcracker/qubership-workflow-hub/actions/assets-action@main
         with:
-          tag: ${{ inputs.release-tag }}
+          tag: ${{ env.RELEASE_TAG }}
           item-path: ${{ env.distribution_root }}/*.deb
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  trigger-pgskipper-patroni:
+    name: Trigger pgskipper-patroni build
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set PostgreSQL version
+        if: ${{ env.TRIGGER_PGSKIPPER_PATRONI == 'true' }}
+        run: |
+          echo "pg_version=$(echo ${{ env.PG_VERSION }} | cut -d'.' -f1 | cut -d'/' -f2)" >> $GITHUB_ENV
+          echo "custom_postgres_version=$(echo ${{ env.PG_VERSION }} | cut -d'/' -f2)" >> $GITHUB_ENV
+          echo "patched_release=${{ env.RELEASE_TAG }}" >> $GITHUB_ENV
+      - name: Trigger workflow
+        if: ${{ env.TRIGGER_PGSKIPPER_PATRONI == 'true' }}
+        uses: netcracker/qubership-workflow-hub/actions/custom-event@v2.0.1
+        with:
+          github-token: ${{ secrets.GH_ACCESS_TOKEN }}
+          owner: ${{ github.repository_owner }}
+          repo: pgskipper-patroni
+          event-type: pg-patched-build
+          client-payload: '{"custom_postgres_version": "${{ env.custom_postgres_version }}", "postgres_version": "${{ env.pg_version }}", "patched_release": "${{ env.patched_release }}"}'
